@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+  <title>记忆锚点 · Memory Anchor</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            paper: '#F6F1E8',
+            'paper-deep': '#EFE7D7',
+            'paper-soft': '#FBF7EE',
+            ink: '#2A2622',
+            'ink-soft': '#5C544C',
+            'ink-mute': '#7A726A',
+            'ink-faint': '#A89E92',
+            wood: '#8C6B4A',
+            'wood-deep': '#6E5236',
+            'wood-soft': '#B89A7C',
+            'wood-tint': 'rgba(140,107,74,0.10)',
+            morandi: '#7A8FA6',
+            line: '#E8E0D2',
+            'line-soft': '#F0E9DC',
+          },
+          fontFamily: {
+            serif: ['"Noto Serif SC"', 'Georgia', 'serif'],
+            sans: ['"Noto Sans SC"', 'system-ui', 'sans-serif'],
+            display: ['"Cormorant Garamond"', '"Noto Serif SC"', 'serif'],
+          },
+          boxShadow: {
+            'paper': '0 1px 2px rgba(42,38,34,0.04), 0 4px 16px rgba(42,38,34,0.04)',
+            'paper-lg': '0 2px 8px rgba(42,38,34,0.06), 0 12px 40px rgba(42,38,34,0.08)',
+            'fab': '0 6px 20px rgba(140,107,74,0.32), 0 2px 4px rgba(42,38,34,0.10)',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+    body {
+    font-family: '"Noto Sans SC"', system-ui, sans-serif;
+    color: #2A2622;
+    background: #EAE0CC;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    /* 防止整页滚动，滚动由内部 flex 容器处理 */
+    overflow: hidden;
+    height: 100%;
+  }
+  html { height: 100%; overflow: hidden; }
+    .phone-frame {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      height: 100%;
+      margin: 0 auto;
+      background: #F6F1E8;
+      overflow: hidden;
+      border-radius: 44px;
+    }
+    .phone-frame::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 44px;
+      border: 8px solid #2A2622;
+      pointer-events: none;
+      z-index: 10;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.1) inset;
+    }
+    #dynamic-island {
+      display: block;
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 34px;
+      background: #2A2622;
+      border-radius: 20px;
+      z-index: 11;
+      pointer-events: none;
+    }
+    @media (max-width: 767px) {
+      body { background: #F6F1E8; }
+      .phone-frame {
+        max-width: 100%;
+        border-radius: 0;
+        border: none;
+      }
+      .phone-frame::before, .phone-frame::after, #dynamic-island { display: none; }
+    }
+    @media (min-width: 768px) {
+      #dynamic-island { top: 12px; }
+    }
+
+    .paper-grain::after {
+      content: '';
+      position: absolute; inset: 0; pointer-events: none; z-index: 1;
+      background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0.07 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+      opacity: 0.55;
+      mix-blend-mode: multiply;
+    }
+
+    .page-enter { animation: pageEnter 360ms cubic-bezier(0.2,0,0,1) both; }
+    @keyframes pageEnter {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-press { transition: transform 180ms cubic-bezier(0.2,0,0,1), background 180ms ease; }
+    .card-press:active { transform: scale(0.985); background: #FBF7EE; }
+
+    .skeleton {
+      background: linear-gradient(90deg, #F0E9DC 0%, #E8E0D2 50%, #F0E9DC 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.6s linear infinite;
+      border-radius: 8px;
+    }
+    @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+    .loading-dots { display: inline-flex; gap: 6px; align-items: center; }
+    .loading-dots span {
+      width: 6px; height: 6px; background: #8C6B4A; border-radius: 50%;
+      animation: dotJump 1.2s infinite ease-in-out;
+    }
+    .loading-dots span:nth-child(2) { animation-delay: 0.15s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes dotJump {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40%           { transform: scale(1);   opacity: 1; }
+    }
+
+    .seal {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px;
+      background: #8C6B4A; color: #F6F1E8;
+      font-family: "Noto Serif SC", serif; font-weight: 700; font-size: 16px;
+      border-radius: 6px; flex-shrink: 0;
+      box-shadow: 0 1px 2px rgba(140,107,74,0.3), inset 0 0 0 1px rgba(255,255,255,0.1);
+    }
+
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 12px; background: rgba(140,107,74,0.10);
+      color: #8C6B4A; border: 1px solid rgba(140,107,74,0.25);
+      border-radius: 999px; font-size: 12px; font-weight: 500;
+    }
+
+    .toast-in { animation: toastIn 280ms cubic-bezier(0.2,0,0,1) both; }
+    @keyframes toastIn { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+    .sheet-in { animation: sheetUp 300ms cubic-bezier(0.2,0,0,1) both; }
+    @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .sheet-overlay { animation: fadeIn 240ms ease-out both; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .progress-line {
+      position: relative; height: 2px; background: rgba(140,107,74,0.12); overflow: hidden; border-radius: 2px;
+    }
+    .progress-line::after {
+      content: ''; position: absolute; top: 0; left: 0; height: 100%; width: 40%;
+      background: linear-gradient(90deg, transparent, #8C6B4A, transparent);
+      animation: progressSlide 1.4s linear infinite;
+    }
+    @keyframes progressSlide { from { left: -40%; } to { left: 100%; } }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: rgba(140,107,74,0.2); border-radius: 2px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    .hidden-input { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+
+    .camera-modal {
+      position: fixed; inset: 0; background: #000; z-index: 100;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      animation: pageEnter 240ms ease both;
+    }
+    .camera-modal video {
+      width: 100%; max-width: 420px; height: auto; aspect-ratio: 4/3;
+      object-fit: cover; background: #000;
+    }
+    .camera-controls {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 20px 24px 32px; display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(180deg, transparent, rgba(0,0,0,0.55));
+    }
+    .camera-close {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: rgba(255,255,255,0.15); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(10px); border: none; cursor: pointer;
+    }
+    .camera-shutter {
+      width: 66px; height: 66px; border-radius: 50%;
+      background: #fff; border: 4px solid rgba(255,255,255,0.4);
+      cursor: pointer; transition: transform 120ms ease;
+    }
+    .camera-shutter:active { transform: scale(0.92); }
+    .camera-switch {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: rgba(255,255,255,0.15); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(10px); border: none; cursor: pointer;
+    }
+    .camera-hint {
+      position: absolute; top: 20px; left: 0; right: 0;
+      text-align: center; color: rgba(255,255,255,0.85);
+      font-size: 13px; letter-spacing: 0.08em;
+    }
+
+    .desc-prose p { margin: 0 0 14px 0; }
+    .desc-prose p:last-child { margin-bottom: 0; }
+    .desc-prose {
+      font-family: "Noto Serif SC", serif;
+      font-size: 16px; line-height: 1.95; color: #2A2622;
+      letter-spacing: 0.01em;
+    }
+    .desc-prose .lead { font-size: 17px; color: #2A2622; }
+
+    .dotted-quill {
+      background-image: radial-gradient(circle, #C4B59A 1px, transparent 1.5px);
+      background-size: 14px 14px;
+    }
+
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    .float-anim { animation: float 4s ease-in-out infinite; }
+
+    @keyframes titleIn {
+      from { opacity: 0; transform: translateY(12px); letter-spacing: -0.05em; }
+      to   { opacity: 1; transform: translateY(0); letter-spacing: 0.02em; }
+    }
+    @keyframes titleGlow {
+      0%,100% { text-shadow: 0 0 0 rgba(140,107,74,0); }
+      50%      { text-shadow: 0 0 20px rgba(140,107,74,0.15), 0 2px 0 rgba(140,107,74,0.08); }
+    }
+    .title-anim {
+      animation:
+        titleIn 800ms cubic-bezier(0.2, 0.8, 0.2, 1) 100ms both,
+        titleGlow 6s ease-in-out 800ms infinite;
+    }
+
+    button, [role="button"] { cursor: pointer; }
+    button:focus, [role="button"]:focus { outline: none; }
+    textarea, input { font-family: inherit; }
+    textarea:focus, input:focus { outline: none; }
+
+    .pin-dot {
+      position: absolute; top: -6px; right: -6px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #D14B4B 0%, #8B2A2A 70%);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="phone-frame paper-grain"><div id="dynamic-island"></div></div>
+  <div id="toast-root" class="fixed top-0 left-0 right-0 pointer-events-none z-[60]"></div>
+  <div id="sheet-root"></div>
+
+  <script>
+  /* =================================================================
+   * 记忆锚点 · Memory Anchor
+   * 纯前端单页应用：照片上传 → 用户填写信息 → DeepSeek API 生成故事 → IndexedDB 存档
+   * ================================================================= */
+
+  /* ========== 1. SVG 图标库（内联） ========== */
+  const ICONS = {
+    plus:       '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    camera:     '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+    image:      '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+    sparkles:   '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M5 19l.5 1.5L7 21l-1.5.5L5 23l-.5-1.5L3 21l1.5-.5z"/></svg>',
+    refresh:    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.49"/></svg>',
+    save:       '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>',
+    back:       '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="15 18 9 12 15 6"/></svg>',
+    trash:      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
+    edit:       '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+    info:       '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="8"/></svg>',
+    check:      '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>',
+    x:          '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    heart:      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
+    feather:    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/></svg>',
+    close:      '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    switch:     '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="1.5"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
+    quote:      '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>',
+    clock:      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    library:    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    featherBig: '<svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/></svg>',
+  };
+
+  /* ========== 2. 状态管理 ========== */
+  function createStore(initial) {
+    let state = initial;
+    const listeners = new Set();
+    return {
+      get: () => state,
+      set: (patch) => {
+        state = typeof patch === 'function' ? patch(state) : { ...state, ...patch };
+        listeners.forEach(fn => fn(state));
+      },
+      subscribe: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
+    };
+  }
+
+  const memoryStore = createStore({ records: [], hydrated: false, captureDraft: null });
+  const uiStore = createStore({ route: 'home', detailId: null, toast: null, sheet: null });
+
+  /* ========== 2b. IndexedDB 存储层 ========== */
+  const DB_NAME = 'memory-anchor-db';
+  const DB_VERSION = 1;
+  const STORE_NAME = 'records';
+  let _db = null;
+
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      if (_db) { resolve(_db); return; }
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => { _db = req.result; resolve(_db); };
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        }
+      };
+    });
+  }
+
+  async function dbSaveRecords(records) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.clear();
+      for (const rec of records) store.put(rec);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function dbLoadRecords() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function dbDeleteRecord(id) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  /* ========== 3. 工具函数 ========== */
+  function uid() { return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
+
+  function formatRelative(ts) {
+    const diff = Date.now() - ts;
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return '刚刚';
+    if (min < 60) return min + ' 分钟前';
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return hr + ' 小时前';
+    const day = Math.floor(hr / 24);
+    if (day < 7) return day + ' 天前';
+    const d = new Date(ts);
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  function formatFullDate(ts) {
+    const d = new Date(ts);
+    return d.getFullYear() + ' 年 ' + (d.getMonth()+1) + ' 月 ' + d.getDate() + ' 日 ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  }
+
+  function compressImage(file, maxSize = 1280, quality = 0.82) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const ratio = Math.min(1, maxSize / Math.max(img.width, img.height));
+          const w = Math.round(img.width * ratio);
+          const h = Math.round(img.height * ratio);
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+          URL.revokeObjectURL(url);
+        } catch (e) { reject(e); }
+      };
+      img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+      img.src = url;
+    });
+  }
+
+  function splitDescription(text) {
+    const sentences = text.split(/(?<=[。!?])/).filter(s => s.trim());
+    if (sentences.length <= 1) return [text];
+    const chunks = [];
+    let buf = '';
+    for (const s of sentences) {
+      if (buf && (buf + s).length > 40) { chunks.push(buf); buf = s; } else { buf += s; }
+    }
+    if (buf) chunks.push(buf);
+    return chunks;
+  }
+
+  /* ========== 4. API 配置 ========== */
+  const DEEPSEEK_API_KEY = 'sk-f1236fb6009040049199017a37ee4cd3';
+  const OPENAI_API_KEY = '7b959787eca24c5eb8e367ffdc5c4dbb.Co9HeMXLjBBHJ84Q';
+
+  // 步骤1：智谱 AI 视觉识别（glm-4v）
+  async function deepseekVision({ photoBase64 }) {
+    const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + OPENAI_API_KEY
+      },
+      body: JSON.stringify({
+        model: 'glm-4v',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: '请仔细观察这张照片，描述照片中的主要物品是什么（名称、颜色、材质、外观特征、所在场景）。如果有多件物品，请重点描述最显眼的那一件。回答要简洁，50字以内。' },
+            { type: 'image_url', image_url: { url: photoBase64 } }
+          ]
+        }],
+        max_tokens: 300,
+        temperature: 0.3,
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error?.message || '视觉识别失败: ' + response.status);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content?.trim() || '';
+  }
+
+  // 步骤2：DeepSeek 生成故事
+  async function generateStoryFromUserInput({ visionResult, objectName, purchaseInfo, meaning }) {
+    const prompt = '你是一位温柔的"记忆守护者"。请根据以下信息，用第一人称（以"我"开头）写一段 150-200 字左右的温馨短故事。\n\n【AI 视觉识别结果】\n' + visionResult + '\n\n【用户自述】\n物品名称：' + objectName + '\n购买信息：' + purchaseInfo + '\n对我的意义：' + meaning + '\n\n写作要求：\n1. 以"我"开头，自然地讲述与这件物品的故事\n2. 语言温柔、生活化，像一位老朋友在讲述往事\n3. 可以结合视觉识别中看到的物品特征（颜色、材质、外观）和用户自述的信息\n4. 可以加入触感、气味、声音、温度等感官细节\n5. 不要出现"用户说"、"照片"、"AI"、"识别"、"根据你提供的信息"等词汇\n6. 故事要有情感温度，能打动人心\n7. 直接输出故事正文，不需要标题或引言';
+
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + DEEPSEEK_API_KEY },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 600,
+        temperature: 0.85,
+        top_p: 0.9,
+      })
+    });
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error?.message || '故事生成失败: ' + response.status);
+    }
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content?.trim() || '';
+  }
+
+
+  /* ========== 5. 数据初始化 ========== */
+  function seedDemo() {
+    const now = Date.now();
+    return [
+      { id: uid(), photoBase64: 'https://picsum.photos/seed/cup/640/640', objectName: '搪瓷杯', purchaseInfo: '1998 年在杭州河坊街买的', meaning: '妈妈留下的那只杯子', description: '那是一只1998年在杭州河坊街买来的搪瓷杯，米白的杯身上印着一朵小小的蓝花。杯口那道细细的裂纹，是有一年我不小心磕的，妈妈却笑着说，这叫「岁月的记号」。每天清晨，她都会用这只杯子给我泡一杯热茶，看着茉莉花在杯中慢慢舒展，热气扑在脸上，是一天里最安心的时刻。', note: '', createdAt: now - 1000 * 60 * 60 * 26 },
+      { id: uid(), photoBase64: 'https://picsum.photos/seed/frame/640/640', objectName: '老相册', purchaseInfo: '旧货市场淘到的', meaning: '里面有亲人的照片', description: '我是在一个旧货市场角落里发现这本相册的。封面是深棕色的皮革，边角已经磨得发亮。翻开第一页，是一张泛黄的全家福，里面有我从未见过面的爷爷，还有年轻的父亲。他们笑得那样开心，背景是故乡的老房子。每次想念他们的时候，就拿出来翻一翻。', note: '', createdAt: now - 1000 * 60 * 60 * 72 },
+    ];
+  }
+
+  memoryStore.subscribe(async (state) => {
+    if (!state.hydrated) return;
+    try { await dbSaveRecords(state.records); } catch (e) { console.warn('DB persist failed:', e); }
+  });
+
+  async function hydrate() {
+    try {
+      const records = await dbLoadRecords();
+      console.log('Hydrate from IndexedDB:', records.length, 'records', records.map(r => r.id));
+      if (records && records.length > 0) { memoryStore.set({ records, hydrated: true }); return; }
+    } catch (e) { console.warn('Hydrate from DB failed:', e); }
+    console.log('Using demo data');
+    memoryStore.set({ records: seedDemo(), hydrated: true });
+  }
+
+  /* ========== 6. 路由 ========== */
+  function parseRoute() {
+    const h = location.hash || '#/';
+    if (h.startsWith('#/capture')) return { route: 'capture' };
+    if (h.startsWith('#/detail/')) {
+      const rawId = h.slice(8); // 去掉 '#/detail/'
+      return { route: 'detail', detailId: decodeURIComponent(rawId.replace(/^\/+/, '')) };
+    }
+    if (h.startsWith('#/about')) return { route: 'about' };
+    return { route: 'home' };
+  }
+
+  function navigate(path) {
+    location.hash = path;
+  }
+
+  window.addEventListener('hashchange', () => {
+    const r = parseRoute();
+    uiStore.set({ route: r.route, detailId: r.detailId });
+    if (r.route === 'capture') memoryStore.set({ captureDraft: null });
+    const sc = document.querySelector('.scroll-area');
+    if (sc) sc.scrollTop = 0;
+  });
+
+  /* ========== 7. 视图组件 ========== */
+  function renderTopBar({ onBack }) {
+    return '<header class="relative z-10 flex items-center justify-between px-5 pb-3 flex-shrink-0" style="flex-shrink:0;padding-top:46px;min-height:46px">' +
+      '<div class="w-9 h-9 flex items-center justify-center flex-shrink-0">' +
+        (onBack ? '<button data-action="back" class="w-9 h-9 flex items-center justify-center text-ink-soft rounded-full hover:bg-paper-deep active:scale-95 transition">' + ICONS.back + '</button>' : '<div class="w-9 h-9"></div>') +
+      '</div>' +
+      '<div class="w-9 h-9 flex-shrink-0"></div>' +
+    '</header>';
+  }
+
+  function renderBottomNav() {
+    const route = uiStore.get().route;
+    return '<nav class="absolute bottom-0 left-0 right-0 z-30 bg-paper-soft/95 backdrop-blur-md border-t border-line" style="height:64px">' +
+      '<div class="flex items-stretch h-16">' +
+        '<button data-action="nav" data-target="#/" class="flex-1 flex flex-col items-center justify-center gap-1 py-2 ' + (route === 'home' || route === 'detail' ? 'text-wood' : 'text-ink-mute') + '">' + ICONS.library + '<span class="text-[11px] tracking-wider">记忆库</span></button>' +
+        '<button data-action="nav" data-target="#/about" class="flex-1 flex flex-col items-center justify-center gap-1 py-2 ' + (route === 'about' ? 'text-wood' : 'text-ink-mute') + '">' + ICONS.info + '<span class="text-[11px] tracking-wider">关于</span></button>' +
+      '</div>' +
+    '</nav>';
+  }
+
+  function renderFab() {
+    if (uiStore.get().route !== 'home') return '';
+    return '<button data-action="nav" data-target="#/capture" class="absolute right-5 z-20 w-14 h-14 rounded-full bg-wood text-paper shadow-fab flex items-center justify-center active:scale-95 transition card-press" style="bottom:80px">' + ICONS.plus + '<span class="pin-dot"></span></button>';
+  }
+
+  function renderMemoryCard(record) {
+    const summary = record.description.slice(0, 28) + (record.description.length > 28 ? '…' : '');
+    return '<article data-action="open-detail" data-id="' + record.id + '" class="card-press bg-white rounded-2xl p-4 shadow-paper flex gap-3.5 cursor-pointer border border-line-soft">' +
+      '<div class="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-paper-deep">' +
+        '<img src="' + record.photoBase64 + '" alt="' + escapeHtml(record.objectName) + '" class="w-full h-full object-cover" loading="lazy" />' +
+        '<div class="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-sm text-[10px] text-ink-soft font-medium tracking-wide">' + escapeHtml(record.objectName) + '</div>' +
+      '</div>' +
+      '<div class="flex-1 min-w-0 flex flex-col">' +
+        '<h3 class="font-serif text-[15px] font-semibold text-ink truncate">' + escapeHtml(record.objectName) + '</h3>' +
+        '<p class="text-[13px] text-ink-soft leading-relaxed line-clamp-2 mb-auto font-serif" style="line-height:1.7">' + escapeHtml(summary) + '</p>' +
+        '<div class="flex items-center gap-1.5 text-[11px] text-ink-faint mt-2">' + ICONS.clock + '<span class="tabular-nums">' + formatRelative(record.createdAt) + '</span></div>' +
+      '</div>' +
+    '</article>';
+  }
+
+  function renderTimelineHeader(count) {
+    return '<section class="px-5 pt-2 pb-4 relative z-10 flex-shrink-0" style="flex-shrink:0">' +
+      '<div class="flex items-end justify-between mb-1">' +
+        '<div><p class="text-[11px] tracking-[0.3em] text-ink-mute font-light">M E M O R Y</p><h2 class="font-serif text-[28px] font-semibold text-ink mt-1 leading-tight title-anim">记忆锚点</h2><p class="text-[13px] text-ink-mute mt-1 font-light">记录生活里，每一件会说话的事物</p></div>' +
+        '<div class="seal float-anim">记</div>' +
+      '</div>' +
+      '<div class="mt-4 flex items-center gap-2 text-[12px] text-ink-mute"><span class="w-4 h-4 rounded-full bg-wood"></span><span class="tracking-wider">共 ' + count + ' 段记忆</span><span class="flex-1 h-px bg-line ml-2"></span></div>' +
+    '</section>';
+  }
+
+  function renderEmptyState() {
+    return '<section class="px-5 py-12 flex flex-col items-center text-center">' +
+      '<div class="w-28 h-28 rounded-full bg-paper-deep dotted-quill flex items-center justify-center mb-5 text-wood-soft">' + ICONS.featherBig + '</div>' +
+      '<p class="font-serif text-[17px] text-ink-soft">还没有记忆</p>' +
+      '<p class="text-[12px] text-ink-mute mt-1.5 leading-relaxed">拍下一件身边的物品<br/>让「记忆守护者」为你写下一段话</p>' +
+      '<button data-action="nav" data-target="#/capture" class="mt-6 px-6 py-2.5 bg-wood text-paper rounded-full text-[13px] font-medium tracking-wider shadow-fab active:scale-95 transition">记录第一段记忆</button>' +
+    '</section>';
+  }
+
+  function renderHomePage() {
+    const { records } = memoryStore.get();
+    const sorted = [...records].sort((a, b) => b.createdAt - a.createdAt);
+    return '<div class="page-enter" style="display:flex;flex-direction:column;height:100%;position:relative">' +
+      '<div style="flex:1;overflow-y:auto">' +
+        renderTopBar({ title: '记忆库', subtitle: 'MEMORY DICTIONARY' }) +
+        renderTimelineHeader(sorted.length) +
+        (sorted.length === 0 ? renderEmptyState() : '<div class="px-5 pb-4 space-y-3.5">' + sorted.map(renderMemoryCard).join('') + '</div>') +
+        '<div class="px-5 mt-2 mb-4 text-center"><p class="text-[10px] text-ink-faint tracking-widest">每一件旧物，都是一封未拆的信</p></div>' +
+      '</div>' +
+      renderFab() +
+      renderBottomNav() +
+    '</div>';
+  }
+
+  function renderUploader() {
+    return '<div class="relative">' +
+      '<button data-action="open-camera" class="w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-wood-soft/50 bg-paper-soft/60 flex flex-col items-center justify-center gap-3 active:scale-[0.99] transition group">' +
+        '<div class="w-16 h-16 rounded-full bg-wood/10 flex items-center justify-center text-wood group-hover:bg-wood/15 transition">' + ICONS.camera + '</div>' +
+        '<div class="text-center"><p class="font-serif text-[15px] text-ink-soft">点击拍照</p><p class="text-[12px] text-ink-mute mt-1">用镜头，定格一件身边的事物</p></div>' +
+      '</button>' +
+      '<button data-action="upload-trigger" class="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-line bg-white/60 text-[13px] text-ink-soft active:scale-[0.99] transition">' + ICONS.image + '<span class="tracking-wide">或从相册选择</span></button>' +
+      '<input type="file" id="file-input" accept="image/*" class="hidden-input" />' +
+    '</div>';
+  }
+
+  function renderUserInputForm(draft) {
+    const ui = draft.userInput || {};
+    return '<div class="rounded-2xl overflow-hidden bg-paper-deep shadow-paper relative mb-4">' +
+      '<img src="' + draft.photoBase64 + '" alt="预览" class="w-full max-h-[280px] object-contain bg-paper-deep" />' +
+      '<button data-action="clear-photo" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm text-white flex items-center justify-center active:scale-90 transition">' + ICONS.x + '</button>' +
+    '</div>' +
+    '<div class="bg-white rounded-2xl border border-line-soft p-5 shadow-paper">' +
+      '<div class="flex items-center gap-2 mb-4"><div class="w-7 h-7 rounded-full bg-wood/10 flex items-center justify-center text-wood">' + ICONS.feather + '</div><p class="font-serif text-[15px] font-semibold text-ink">讲述它的故事</p></div>' +
+      '<p class="text-[12px] text-ink-mute leading-relaxed mb-4">请回答下面三个问题，AI 会先识别照片中的物品，再结合你的故事生成温馨短文。</p>' +
+      '<div class="space-y-4">' +
+        '<div><label class="block text-[12px] text-ink-soft mb-1.5 tracking-wide"><span class="text-wood font-medium">1.</span> 物品名称</label><textarea id="input-name" rows="2" maxlength="60" class="w-full p-3 rounded-xl border border-line bg-paper-soft text-[14px] text-ink leading-relaxed resize-none" placeholder="比如：妈妈留下的那只搪瓷杯">' + escapeHtml(ui.objectName || '') + '</textarea></div>' +
+        '<div><label class="block text-[12px] text-ink-soft mb-1.5 tracking-wide"><span class="text-wood font-medium">2.</span> 时间/地点</label><textarea id="input-purchase" rows="2" maxlength="120" class="w-full p-3 rounded-xl border border-line bg-paper-soft text-[14px] text-ink leading-relaxed resize-none" placeholder="比如：1998 年暑假在杭州河坊街买的">' + escapeHtml(ui.purchaseInfo || '') + '</textarea></div>' +
+        '<div><label class="block text-[12px] text-ink-soft mb-1.5 tracking-wide"><span class="text-wood font-medium">3.</span> 意义</label><textarea id="input-meaning" rows="3" maxlength="200" class="w-full p-3 rounded-xl border border-line bg-paper-soft text-[14px] text-ink leading-relaxed resize-none" placeholder="比如：它陪我度过了大学四年">' + escapeHtml(ui.meaning || '') + '</textarea></div>' +
+      '</div>' +
+      '<button data-action="submit-user-input" class="w-full mt-5 py-3.5 rounded-2xl bg-wood text-paper font-medium text-[14px] tracking-widest shadow-fab active:scale-[0.98] transition flex items-center justify-center gap-2">' + ICONS.sparkles + '<span>生成记忆</span></button>' +
+    '</div>';
+  }
+
+  function renderWritingState() {
+    return '<div class="rounded-2xl bg-white border border-line-soft p-6 shadow-paper text-center">' +
+      '<div class="w-16 h-16 rounded-full bg-wood/10 flex items-center justify-center text-wood mx-auto mb-4">' + ICONS.sparkles + '</div>' +
+      '<p class="font-serif text-[16px] text-ink font-semibold mb-1">正在为你书写故事…</p>' +
+      '<p class="text-[12px] text-ink-mute leading-relaxed mb-5">「记忆守护者」正在结合视觉识别结果<br/>与你的故事，编织温暖的文字</p>' +
+      '<div class="progress-line mb-4"></div>' +
+      '<div class="space-y-2"><div class="skeleton h-3.5 w-full"></div><div class="skeleton h-3.5 w-[94%]"></div><div class="skeleton h-3.5 w-[88%]"></div></div>' +
+      '<div class="mt-4 flex items-center justify-center gap-2 text-[11px] text-ink-mute"><span class="loading-dots"><span></span><span></span><span></span></span><span class="tracking-wider ml-1">CRAFTING</span></div>' +
+    '</div>';
+  }
+
+  function renderErrorState(draft) {
+    return '<div class="rounded-2xl bg-white border border-red-200 p-6 shadow-paper text-center">' +
+      '<div class="text-[40px] mb-3">⚠️</div>' +
+      '<p class="font-serif text-[15px] text-ink font-semibold mb-1">故事生成失败</p>' +
+      '<p class="text-[12px] text-ink-mute leading-relaxed mb-1">' + escapeHtml(draft.error || '请检查网络后重试') + '</p>' +
+      '<div class="flex flex-col gap-2.5">' +
+        '<button data-action="retry-generate" class="w-full py-3 rounded-xl bg-wood text-paper text-[13px] font-medium tracking-wider active:scale-[0.98] transition">再次尝试生成</button>' +
+        '<button data-action="back-to-info" class="w-full py-3 rounded-xl border border-line text-ink-soft text-[13px] tracking-wider active:scale-[0.98] transition">返回修改内容</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderDoneStateNew(draft) {
+    const paragraphs = splitDescription(draft.description);
+    return '<div class="rounded-2xl bg-white border border-line-soft shadow-paper overflow-hidden">' +
+      '<div class="px-5 py-4 border-b border-line-soft flex items-center justify-between">' +
+        '<div class="flex items-center gap-2"><div class="seal" style="width:30px;height:30px;font-size:13px">记</div><div><p class="text-[10px] text-ink-mute tracking-[0.3em]">STORY</p><p class="font-serif text-[16px] font-semibold text-ink">' + escapeHtml(draft.userInput.objectName) + '</p></div></div>' +
+        '<span class="chip">' + ICONS.heart + ' 记忆守护</span>' +
+      '</div>' +
+      '<div class="px-5 py-3 bg-paper-soft/60 border-b border-line-soft text-[12px] text-ink-soft leading-relaxed space-y-1">' +
+        '<p><span class="text-ink-mute">来历：</span>' + escapeHtml(draft.userInput.purchaseInfo) + '</p>' +
+        '<p><span class="text-ink-mute">意义：</span>' + escapeHtml(draft.userInput.meaning) + '</p>' +
+      '</div>' +
+      (draft.visionResult ? '<div class="mx-5 my-3 p-3.5 rounded-xl bg-wood-tint border border-wood/20 text-[13px] text-ink leading-relaxed"><span class="text-[10px] text-wood font-medium tracking-widest block mb-1">AI 视觉识别</span>' + escapeHtml(draft.visionResult) + '</div>' : '') +
+      '<div class="px-5 py-5 relative">' +
+        '<span class="absolute top-3 left-3 text-wood-soft opacity-50">' + ICONS.quote + '</span>' +
+        '<div class="desc-prose pl-5">' + paragraphs.map(p => '<p>' + escapeHtml(p) + '</p>').join('') + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="mt-4 grid grid-cols-2 gap-3">' +
+      '<button data-action="regenerate-story" class="py-3 rounded-xl border border-wood/30 bg-white text-wood text-[13px] font-medium tracking-wider active:scale-[0.98] transition flex items-center justify-center gap-2">' + ICONS.refresh + '<span>重新生成</span></button>' +
+      '<button data-action="save" class="py-3 rounded-xl bg-wood text-paper text-[13px] font-medium tracking-wider shadow-fab active:scale-[0.98] transition flex items-center justify-center gap-2">' + ICONS.save + '<span>保存到记忆库</span></button>' +
+    '</div>';
+  }
+
+  function renderCapturePage() {
+    const draft = memoryStore.get().captureDraft || { photoBase64: null, step: 'photo' };
+    return '<div class="page-enter" style="display:flex;flex-direction:column;height:100%;overflow:hidden">' +
+      renderTopBar({ title: '记录新记忆', subtitle: 'NEW ANCHOR', onBack: true }) +
+      '<div class="flex-1 overflow-y-auto px-5 pb-32 relative z-10">' +
+        (draft.step === 'photo' ? renderUploader() : '') +
+        (draft.step === 'info' ? renderUserInputForm(draft) : '') +
+        (draft.step === 'visioning' ? renderVisioningState() : '') +
+        (draft.step === 'writing' ? renderWritingState() : '') +
+        (draft.step === 'done' ? renderDoneStateNew(draft) : '') +
+        (draft.step === 'error' ? renderErrorState(draft) : '') +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderVisioningState() {
+    return '<div class="rounded-2xl bg-white border border-line-soft p-6 shadow-paper text-center">' +
+      '<div class="w-16 h-16 rounded-full bg-wood/10 flex items-center justify-center text-wood mx-auto mb-4">' + ICONS.camera + '</div>' +
+      '<p class="font-serif text-[16px] text-ink font-semibold mb-1">AI 正在分析照片…</p>' +
+      '<p class="text-[12px] text-ink-mute leading-relaxed mb-5">「记忆守护者」正在观察照片<br/>识别你身边的这件物品</p>' +
+      '<div class="progress-line mb-4"></div>' +
+      '<div class="space-y-2"><div class="skeleton h-3.5 w-full"></div><div class="skeleton h-3.5 w-[80%]"></div></div>' +
+      '<div class="mt-4 flex items-center justify-center gap-2 text-[11px] text-ink-mute"><span class="loading-dots"><span></span><span></span><span></span></span><span class="tracking-wider ml-1">SEEING</span></div>' +
+    '</div>';
+  }
+
+  function renderDetailPage() {
+    const { detailId } = uiStore.get();
+    const { records } = memoryStore.get();
+    const cleanId = (detailId || '').replace(/^\/+/, '');
+    const record = records.find(r => r.id === cleanId);
+    if (!record) {
+      return '<div class="page-enter" style="display:flex;flex-direction:column;height:100%;overflow:hidden">' +
+        renderTopBar({ title: '记忆详情', onBack: true }) +
+        '<div class="flex-1 flex flex-col items-center justify-center text-ink-mute px-6 text-center">' +
+          '<p class="font-serif text-[16px]">这段记忆已经不在了</p>' +
+          '<p class="text-[12px] mt-2">正在查找 ID: <code class="bg-paper-deep px-1 rounded">' + escapeHtml(cleanId) + '</code></p>' +
+          '<p class="text-[12px] mt-1">已有记录数: ' + records.length + '</p>' +
+          '<button data-action="nav" data-target="#/" class="mt-4 px-5 py-2 rounded-full bg-wood text-paper text-[13px]">回到记忆库</button>' +
+        '</div>' +
+      '</div>';
+    }
+    const paragraphs = splitDescription(record.description);
+    return '<div class="page-enter" style="display:flex;flex-direction:column;height:100%;overflow:hidden">' +
+      renderTopBar({ title: '记忆详情', subtitle: formatRelative(record.createdAt).toUpperCase(), onBack: true }) +
+      '<div class="flex-1 overflow-y-auto pb-28 relative z-10">' +
+        '<div class="px-5">' +
+          '<div class="rounded-2xl overflow-hidden bg-paper-deep shadow-paper"><img src="' + record.photoBase64 + '" alt="' + escapeHtml(record.objectName) + '" class="w-full max-h-[420px] object-contain bg-paper-deep" /></div>' +
+          '<div class="mt-5 flex items-center gap-2.5"><div class="seal" style="width:32px;height:32px;font-size:14px">记</div><div><p class="text-[10px] text-ink-mute tracking-[0.3em]">STORY</p><h2 class="font-serif text-[20px] font-semibold text-ink leading-tight">' + escapeHtml(record.objectName) + '</h2></div></div>' +
+          (record.purchaseInfo || record.meaning ? '<div class="mt-4 rounded-xl bg-paper-soft border border-line-soft px-4 py-3 text-[12px] text-ink-soft leading-relaxed space-y-1">' + (record.purchaseInfo ? '<p><span class="text-ink-mute">来历：</span>' + escapeHtml(record.purchaseInfo) + '</p>' : '') + (record.meaning ? '<p><span class="text-ink-mute">意义：</span>' + escapeHtml(record.meaning) + '</p>' : '') + '</div>' : '') +
+          '<div class="mt-5 relative pl-4"><span class="absolute -left-0.5 top-0 bottom-0 w-px bg-wood-soft/40"></span><div class="desc-prose">' + paragraphs.map(p => '<p>' + escapeHtml(p) + '</p>').join('') + '</div></div>' +
+          '<div class="mt-6" data-detail-note>' +
+            (record.note ? '<div class="rounded-xl bg-wood-tint border border-wood/15 px-4 py-3"><p class="text-[10px] text-wood tracking-[0.3em] mb-1">MY NOTE</p><p class="font-serif text-[14px] text-ink leading-relaxed">' + escapeHtml(record.note) + '</p></div>' : '<button data-action="edit-note" class="w-full rounded-xl border border-dashed border-line py-3 text-[12px] text-ink-mute tracking-wider active:scale-[0.99] transition">+ 添加这条记忆的备注</button>') +
+          '</div>' +
+          '<div class="mt-6 text-center"><p class="text-[10px] text-ink-faint tracking-widest">记录于 ' + formatFullDate(record.createdAt) + '</p></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="absolute bottom-0 left-0 right-0 z-30 px-5 py-3 bg-paper-soft/95 backdrop-blur-md border-t border-line">' +
+        '<div class="flex items-center justify-center gap-2">' +
+          '<button data-action="edit-note" class="flex-1 py-2.5 rounded-xl border border-wood/30 bg-white text-wood text-[13px] tracking-wider active:scale-[0.98] transition flex items-center justify-center gap-2">' + ICONS.edit + '<span>' + (record.note ? '编辑备注' : '添加备注') + '</span></button>' +
+          '<button data-action="delete" class="px-4 py-2.5 rounded-xl border border-line bg-white text-ink-mute text-[13px] tracking-wider active:scale-[0.98] transition flex items-center justify-center gap-2">' + ICONS.trash + '<span>删除</span></button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderAboutPage() {
+    return '<div class="page-enter" style="display:flex;flex-direction:column;height:100%;overflow:hidden">' +
+      renderTopBar({ title: '关于', subtitle: 'ABOUT' }) +
+      '<div class="flex-1 overflow-y-auto pb-24 relative z-10 px-6">' +
+        '<div class="pt-2 pb-6 text-center"><div class="inline-flex flex-col items-center"><div class="seal" style="width:56px;height:56px;font-size:24px">记</div><p class="font-serif text-[24px] font-semibold text-ink mt-3 tracking-wide">记忆锚点</p><p class="text-[10px] text-ink-mute tracking-[0.4em] mt-1">MEMORY ANCHOR</p></div></div>' +
+        '<div class="rounded-2xl bg-white border border-line-soft p-5 shadow-paper"><p class="font-serif text-[15px] text-ink leading-loose">每件旧物，都记得一段故事。<br/>把镜头对准它，让「记忆守护者」替你记下——<br/>那些触得到的温度、听得见的声音、和再也回不去的下午。</p></div>' +
+        '<div class="mt-5 space-y-3.5">' +
+          ['📷 拍下一件身边的物品', '✍️ 讲述它的故事（回答三个问题）', '🤖 AI 视觉识别 + 生成故事', '📖 存入你的记忆库'].map(t => '<div class="flex items-start gap-3 p-3.5 rounded-xl bg-paper-soft/60 border border-line-soft"><div class="w-9 h-9 rounded-full bg-wood/10 flex items-center justify-center text-[18px] flex-shrink-0">' + t.split(' ')[0] + '</div><div><p class="font-serif text-[14px] text-ink font-semibold">' + t.split(' ').slice(1).join(' ') + '</p></div></div>').join('') +
+        '</div>' +
+        '<div class="mt-6 p-4 rounded-xl bg-paper-deep/60 border border-line-soft text-[12px] text-ink-mute leading-relaxed"><p class="font-serif text-ink-soft mb-1.5">关于数据与隐私</p><p>所有照片与文字仅保存在你当前浏览器的本地 IndexedDB 中，不会发送到任何服务器。</p></div>' +
+        '<div class="mt-6 text-center text-[10px] text-ink-faint tracking-widest"><p>VERSION · 1.2</p><p class="mt-1">愿你的每一天，都值得被记住</p></div>' +
+      '</div>' +
+      renderBottomNav() +
+    '</div>';
+  }
+
+  /* ========== 8. Toast / Sheet ========== */
+  function showToast(message, type = 'success') {
+    const root = document.getElementById('toast-root');
+    const color = type === 'error' ? 'border-red-300 text-red-700' : 'border-wood/30 text-ink-soft';
+    root.innerHTML = '<div class="toast-in absolute top-6 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-full bg-white border ' + color + ' shadow-paper-lg text-[13px] flex items-center gap-2 max-w-[90%]"><span class="w-5 h-5 rounded-full bg-wood/15 text-wood flex items-center justify-center">' + ICONS.check + '</span><span>' + escapeHtml(message) + '</span></div>';
+    setTimeout(() => { root.innerHTML = ''; }, 1800);
+  }
+
+  function showSheet({ title, message, confirmText = '确认', cancelText = '取消', danger = false, onConfirm }) {
+    const root = document.getElementById('sheet-root');
+    root.innerHTML = '<div class="sheet-overlay fixed inset-0 z-[70] bg-ink/40 backdrop-blur-sm" data-action="close-sheet"></div>' +
+      '<div class="sheet-in fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] z-[80] bg-paper-soft rounded-t-3xl px-5 pt-3 pb-8 shadow-paper-lg">' +
+        '<div class="w-10 h-1 bg-line rounded-full mx-auto mb-4"></div>' +
+        '<p class="font-serif text-[17px] text-ink font-semibold text-center">' + escapeHtml(title) + '</p>' +
+        (message ? '<p class="text-[13px] text-ink-mute text-center mt-2 leading-relaxed">' + escapeHtml(message) + '</p>' : '') +
+        '<div class="mt-5 space-y-2.5">' +
+          '<button data-action="sheet-confirm" class="w-full py-3 rounded-xl ' + (danger ? 'bg-red-600 text-white' : 'bg-wood text-paper') + ' text-[14px] font-medium tracking-wider active:scale-[0.98] transition">' + escapeHtml(confirmText) + '</button>' +
+          '<button data-action="close-sheet" class="w-full py-3 rounded-xl bg-white border border-line text-ink-soft text-[14px] tracking-wider active:scale-[0.98] transition">' + escapeHtml(cancelText) + '</button>' +
+        '</div>' +
+      '</div>';
+    uiStore.set({ sheet: { onConfirm } });
+  }
+
+  function closeSheet() {
+    document.getElementById('sheet-root').innerHTML = '';
+    uiStore.set({ sheet: null });
+  }
+
+  function showNoteEditor(initial = '', onSave) {
+    const root = document.getElementById('sheet-root');
+    root.innerHTML = '<div class="sheet-overlay fixed inset-0 z-[70] bg-ink/40 backdrop-blur-sm" data-action="close-sheet"></div>' +
+      '<div class="sheet-in fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] z-[80] bg-paper-soft rounded-t-3xl px-5 pt-3 pb-8 shadow-paper-lg">' +
+        '<div class="w-10 h-1 bg-line rounded-full mx-auto mb-4"></div>' +
+        '<p class="font-serif text-[16px] text-ink font-semibold">添加备注</p>' +
+        '<p class="text-[12px] text-ink-mute mt-1">写下你与这件物品之间的小事</p>' +
+        '<textarea id="note-input" rows="4" maxlength="200" class="mt-4 w-full p-3 rounded-xl bg-white border border-line text-[14px] text-ink leading-relaxed resize-none" placeholder="比如：这是妈妈年轻时的杯子">' + escapeHtml(initial) + '</textarea>' +
+        '<div class="mt-1 text-right text-[10px] text-ink-faint">最多 200 字</div>' +
+        '<div class="mt-3 space-y-2.5">' +
+          '<button data-action="note-save" class="w-full py-3 rounded-xl bg-wood text-paper text-[14px] font-medium tracking-wider active:scale-[0.98] transition">保存备注</button>' +
+          '<button data-action="close-sheet" class="w-full py-3 rounded-xl bg-white border border-line text-ink-soft text-[14px] tracking-wider active:scale-[0.98] transition">取消</button>' +
+        '</div>' +
+      '</div>';
+    uiStore.set({ sheet: { onSave } });
+    setTimeout(() => { const ta = document.getElementById('note-input'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, 200);
+  }
+
+  /* ========== 9. 动作处理 ========== */
+  const handlers = {
+    'nav': (el) => navigate(el.dataset.target || '#/'),
+    'back': () => { history.length > 1 ? history.back() : navigate('#/'); },
+    'open-detail': (el) => navigate('#/detail/' + encodeURIComponent(el.dataset.id)),
+    'upload-trigger': (el) => {
+      const input = document.getElementById('file-input');
+      if (!input) return;
+      input.removeAttribute('capture');
+      input.click();
+    },
+    'open-camera': () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        // Fallback: use file input with capture
+        const input = document.getElementById('file-input');
+        if (!input) return;
+        input.setAttribute('capture', 'environment');
+        input.click();
+        return;
+      }
+      openCamera();
+    },
+    'close-camera': () => {
+      closeCamera();
+    },
+    'snap-photo': () => {
+      takePhoto();
+    },
+    'switch-camera': () => {
+      switchCamera();
+    },
+    'clear-photo': () => {
+      memoryStore.set({ captureDraft: { photoBase64: null, step: 'photo' } });
+      const fi = document.getElementById('file-input');
+      if (fi) fi.value = '';
+    },
+    'submit-user-input': async () => {
+      const draft = memoryStore.get().captureDraft;
+      if (!draft || !draft.photoBase64) return;
+      const name = document.getElementById('input-name')?.value.trim();
+      const purchase = document.getElementById('input-purchase')?.value.trim();
+      const meaning = document.getElementById('input-meaning')?.value.trim();
+      if (!name) { showToast('请填写物品名称', 'error'); return; }
+      if (!purchase) { showToast('请填写购买信息', 'error'); return; }
+      if (!meaning) { showToast('请填写它的意义', 'error'); return; }
+      const userInput = { objectName: name, purchaseInfo: purchase, meaning };
+      memoryStore.set({ captureDraft: { ...draft, step: 'visioning', userInput } });
+      try {
+        // 第一步：DeepSeek 视觉识别
+        const visionResult = await deepseekVision({ photoBase64: draft.photoBase64 });
+        memoryStore.set({ captureDraft: { ...memoryStore.get().captureDraft, step: 'writing', visionResult } });
+        // 第二步：DeepSeek 生成故事
+        const description = await generateStoryFromUserInput({ visionResult, objectName: name, purchaseInfo: purchase, meaning });
+        if (!description) throw new Error('故事内容为空');
+        memoryStore.set({ captureDraft: { ...memoryStore.get().captureDraft, description, step: 'done' } });
+      } catch (err) {
+        memoryStore.set({ captureDraft: { ...memoryStore.get().captureDraft, step: 'error', error: err.message } });
+      }
+    },
+    'retry-generate': async () => {
+      const draft = memoryStore.get().captureDraft;
+      if (!draft || !draft.userInput || !draft.photoBase64) return;
+      memoryStore.set({ captureDraft: { ...draft, step: 'writing', error: null } });
+      try {
+        const visionResult = await deepseekVision({ photoBase64: draft.photoBase64 });
+        memoryStore.set({ captureDraft: { ...memoryStore.get().captureDraft, step: 'writing', visionResult } });
+        const description = await generateStoryFromUserInput({ visionResult, objectName: draft.userInput.objectName, purchaseInfo: draft.userInput.purchaseInfo, meaning: draft.userInput.meaning });
+        if (!description) throw new Error('故事内容为空');
+        memoryStore.set({ captureDraft: { ...memoryStore.get().captureDraft, description, step: 'done' } });
+      } catch (err) {
+        memoryStore.set({ captureDraft: { ...memoryStore.get().captureDraft, step: 'error', error: err.message } });
+      }
+    },
+    'back-to-info': () => {
+      const draft = memoryStore.get().captureDraft;
+      if (!draft) return;
+      memoryStore.set({ captureDraft: { ...draft, step: 'info' } });
+    },
+    'regenerate-story': async () => {
+      const draft = memoryStore.get().captureDraft;
+      if (!draft || !draft.userInput || !draft.photoBase64) return;
+      memoryStore.set({ captureDraft: { ...draft, step: 'writing', error: null } });
+      try {
+        const visionResult = await deepseekVision({ photoBase64: draft.photoBase64 });
+        memoryStore.set({ captureDraft: { ...memoryStore.get().captureDraft, step: 'writing', visionResult } });
+        const description = await generateStoryFromUserInput({ visionResult, objectName: draft.userInput.objectName, purchaseInfo: draft.userInput.purchaseInfo, meaning: draft.userInput.meaning });
+        if (!description) throw new Error('故事内容为空');
+        memoryStore.set({ captureDraft: { ...memoryStore.get().captureDraft, description, step: 'done' } });
+      } catch (err) {
+        memoryStore.set({ captureDraft: { ...memoryStore.get().captureDraft, step: 'error', error: err.message } });
+      }
+    },
+    'save': () => {
+      const draft = memoryStore.get().captureDraft;
+      if (!draft || draft.step !== 'done' || !draft.description) return;
+      const record = {
+        id: uid(),
+        photoBase64: draft.photoBase64,
+        objectName: draft.userInput.objectName,
+        purchaseInfo: draft.userInput.purchaseInfo,
+        meaning: draft.userInput.meaning,
+        description: draft.description,
+        note: '',
+        createdAt: Date.now(),
+      };
+      memoryStore.set({ records: [record, ...memoryStore.get().records], captureDraft: null });
+      showToast('已存入记忆库');
+      setTimeout(() => navigate('#/detail/' + encodeURIComponent(record.id)), 300);
+    },
+    'delete': () => {
+      const { detailId } = uiStore.get();
+      if (!detailId) return;
+      showSheet({
+        title: '删除这段记忆？',
+        message: '删除后无法恢复，照片与文字都将从词典中消失。',
+        confirmText: '确认删除',
+        danger: true,
+        onConfirm: async () => {
+          memoryStore.set({ records: memoryStore.get().records.filter(r => r.id !== detailId) });
+          try { await dbDeleteRecord(detailId); } catch (e) { console.warn('Delete failed:', e); }
+          showToast('已删除');
+          setTimeout(() => navigate('#/'), 300);
+        }
+      });
+    },
+    'edit-note': () => {
+      const { detailId } = uiStore.get();
+      if (!detailId) return;
+      const rec = memoryStore.get().records.find(r => r.id === detailId);
+      if (!rec) return;
+      showNoteEditor(rec.note || '', (newNote) => {
+        memoryStore.set({ records: memoryStore.get().records.map(r => r.id === detailId ? { ...r, note: newNote } : r) });
+        showToast('备注已保存');
+      });
+    },
+    'close-sheet': () => closeSheet(),
+    'sheet-confirm': () => {
+      const { sheet } = uiStore.get();
+      if (sheet && sheet.onConfirm) { try { sheet.onConfirm(); } catch (e) { console.error(e); } }
+      closeSheet();
+    },
+    'note-save': () => {
+      const ta = document.getElementById('note-input');
+      if (!ta) return;
+      const { sheet } = uiStore.get();
+      const v = ta.value.trim().slice(0, 200);
+      if (sheet && sheet.onSave) { try { sheet.onSave(v); } catch (e) { console.error(e); } }
+      closeSheet();
+    },
+  };
+
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-action]');
+    if (!target) return;
+    const action = target.dataset.action;
+    const handler = handlers[action];
+    if (handler) { e.preventDefault(); handler(target); }
+  });
+
+  document.addEventListener('change', async (e) => {
+    if (e.target && e.target.id === 'file-input') {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        showToast('正在处理照片');
+        const data = await compressImage(file);
+        memoryStore.set({ captureDraft: { photoBase64: data, step: 'info' } });
+        e.target.value = '';
+      } catch (err) {
+        console.error(err);
+        showToast('图片读取失败', 'error');
+      }
+    }
+  });
+
+  /* ========== 10. 主渲染 ========== */
+  function render() {
+    const { route } = uiStore.get();
+    const app = document.getElementById('app');
+    let html = '';
+    switch (route) {
+      case 'capture': html = renderCapturePage(); break;
+      case 'detail':  html = renderDetailPage();  break;
+      case 'about':   html = renderAboutPage();   break;
+      default:        html = renderHomePage();
+    }
+    app.innerHTML = html;
+  }
+
+  uiStore.subscribe(render);
+  memoryStore.subscribe(render);
+
+  /* ========== 10.5. 摄像头功能 ========== */
+  let _cameraStream = null;
+  let _cameraFacing = 'environment';
+
+  function openCamera() {
+    const root = document.getElementById('toast-root');
+    const modal = document.createElement('div');
+    modal.id = 'camera-modal-root';
+    modal.style.position = 'fixed';
+    modal.style.inset = '0';
+    modal.style.zIndex = '200';
+    modal.innerHTML =
+      '<div class="camera-modal">' +
+        '<p class="camera-hint">对准物品，按下方按钮拍照</p>' +
+        '<video id="camera-video" autoplay playsinline muted></video>' +
+        '<div class="camera-controls">' +
+          '<button data-action="close-camera" class="camera-close">' + ICONS.close + '</button>' +
+          '<button data-action="snap-photo" class="camera-shutter"></button>' +
+          '<button data-action="switch-camera" class="camera-switch">' + ICONS.switch + '</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+
+    _startCameraStream();
+  }
+
+  function _startCameraStream() {
+    const constraints = {
+      video: {
+        facingMode: _cameraFacing,
+        width: { ideal: 1280 },
+        height: { ideal: 960 }
+      },
+      audio: false
+    };
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then((stream) => {
+        _cameraStream = stream;
+        const video = document.getElementById('camera-video');
+        if (video) video.srcObject = stream;
+      })
+      .catch((err) => {
+        console.warn('camera error:', err);
+        showToast('无法访问摄像头，请改用相册上传', 'error');
+        closeCamera();
+      });
+  }
+
+  function closeCamera() {
+    if (_cameraStream) {
+      _cameraStream.getTracks().forEach((t) => t.stop());
+      _cameraStream = null;
+    }
+    const modal = document.getElementById('camera-modal-root');
+    if (modal) modal.remove();
+  }
+
+  function switchCamera() {
+    if (!_cameraStream) return;
+    _cameraStream.getTracks().forEach((t) => t.stop());
+    _cameraStream = null;
+    _cameraFacing = _cameraFacing === 'environment' ? 'user' : 'environment';
+    _startCameraStream();
+  }
+
+  function takePhoto() {
+    const video = document.getElementById('camera-video');
+    if (!video || !video.videoWidth) {
+      showToast('摄像头尚未就绪，请稍等', 'error');
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    const maxW = 1280;
+    const scale = Math.min(1, maxW / video.videoWidth);
+    canvas.width = video.videoWidth * scale;
+    canvas.height = video.videoHeight * scale;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { closeCamera(); return; }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    const draft = memoryStore.get().captureDraft || {};
+    memoryStore.set({ captureDraft: { ...draft, photoBase64: dataUrl, step: 'info' } });
+    closeCamera();
+  }
+
+  /* ========== 11. 启动 ========== */
+  (async () => {
+    try {
+      await hydrate();
+      const r = parseRoute();
+      uiStore.set({ route: r.route, detailId: r.detailId });
+      render();
+    } catch (err) {
+      const app = document.getElementById('app');
+      app.innerHTML = '<div style="padding:40px;font-family:sans-serif;color:#c0392b;background:#fef9f9;min-height:100vh"><h2>启动出错</h2><pre style="font-size:13px;word-break:break-all;background:#fff0f0;padding:12px;border-radius:8px">' + (err.stack || err.message) + '</pre><button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:#8C6B4A;color:#fff;border:none;border-radius:8px;cursor:pointer">重新加载</button></div>';
+    }
+  })();
+  </script>
+</body>
+</html>
