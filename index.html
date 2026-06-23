@@ -163,7 +163,7 @@
     @keyframes toastIn { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
     .sheet-in { animation: sheetUp 300ms cubic-bezier(0.2,0,0,1) both; }
-    @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @keyframes sheetUp { from { transform: translate(-50%, 100%); } to { transform: translate(-50%, 0); } }
     .sheet-overlay { animation: fadeIn 240ms ease-out both; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -266,9 +266,12 @@
   </style>
 </head>
 <body>
-  <div id="app" class="phone-frame paper-grain"><div id="dynamic-island"></div></div>
-  <div id="toast-root" class="fixed top-0 left-0 right-0 pointer-events-none z-[60]"></div>
-  <div id="sheet-root"></div>
+  <div id="app" class="phone-frame paper-grain">
+    <div id="dynamic-island"></div>
+    <div id="toast-root" class="absolute top-0 left-0 right-0 pointer-events-none z-[60]"></div>
+    <div id="page-root" class="contents"></div>
+    <div id="sheet-root"></div>
+  </div>
 
   <script>
   /* =================================================================
@@ -488,8 +491,8 @@
   function seedDemo() {
     const now = Date.now();
     return [
-      { id: uid(), photoBase64: 'https://picsum.photos/seed/cup/640/640', objectName: '搪瓷杯', purchaseInfo: '1998 年在杭州河坊街买的', meaning: '妈妈留下的那只杯子', description: '那是一只1998年在杭州河坊街买来的搪瓷杯，米白的杯身上印着一朵小小的蓝花。杯口那道细细的裂纹，是有一年我不小心磕的，妈妈却笑着说，这叫「岁月的记号」。每天清晨，她都会用这只杯子给我泡一杯热茶，看着茉莉花在杯中慢慢舒展，热气扑在脸上，是一天里最安心的时刻。', note: '', createdAt: now - 1000 * 60 * 60 * 26 },
-      { id: uid(), photoBase64: 'https://picsum.photos/seed/frame/640/640', objectName: '老相册', purchaseInfo: '旧货市场淘到的', meaning: '里面有亲人的照片', description: '我是在一个旧货市场角落里发现这本相册的。封面是深棕色的皮革，边角已经磨得发亮。翻开第一页，是一张泛黄的全家福，里面有我从未见过面的爷爷，还有年轻的父亲。他们笑得那样开心，背景是故乡的老房子。每次想念他们的时候，就拿出来翻一翻。', note: '', createdAt: now - 1000 * 60 * 60 * 72 },
+      { id: uid(), photoBase64: 'https://picsum.photos/seed/cup/640/640', objectName: '搪瓷杯', purchaseInfo: '1998 年在杭州河坊街买的', meaning: '妈妈留下的那只杯子', description: '那是一只1998年在杭州河坊街买来的搪瓷杯，米白的杯身上印着一朵小小的蓝花。杯口那道细细的裂纹，是有一年我不小心磕的，妈妈却笑着说，这叫「岁月的记号」。每天清晨，她都会用这只杯子给我泡一杯热茶，看着茉莉花在杯中慢慢舒展，热气扑在脸上，是一天里最安心的时刻。', createdAt: now - 1000 * 60 * 60 * 26 },
+      { id: uid(), photoBase64: 'https://picsum.photos/seed/frame/640/640', objectName: '老相册', purchaseInfo: '旧货市场淘到的', meaning: '里面有亲人的照片', description: '我是在一个旧货市场角落里发现这本相册的。封面是深棕色的皮革，边角已经磨得发亮。翻开第一页，是一张泛黄的全家福，里面有我从未见过面的爷爷，还有年轻的父亲。他们笑得那样开心，背景是故乡的老房子。每次想念他们的时候，就拿出来翻一翻。', createdAt: now - 1000 * 60 * 60 * 72 },
     ];
   }
 
@@ -675,9 +678,10 @@
         '<div class="desc-prose pl-5">' + paragraphs.map(p => '<p>' + escapeHtml(p) + '</p>').join('') + '</div>' +
       '</div>' +
     '</div>' +
-    '<div class="mt-4 grid grid-cols-2 gap-3">' +
-      '<button data-action="regenerate-story" class="py-3 rounded-xl border border-wood/30 bg-white text-wood text-[13px] font-medium tracking-wider active:scale-[0.98] transition flex items-center justify-center gap-2">' + ICONS.refresh + '<span>重新生成</span></button>' +
-      '<button data-action="save" class="py-3 rounded-xl bg-wood text-paper text-[13px] font-medium tracking-wider shadow-fab active:scale-[0.98] transition flex items-center justify-center gap-2">' + ICONS.save + '<span>保存到记忆库</span></button>' +
+    '<div class="mt-4 grid grid-cols-3 gap-3">' +
+      '<button data-action="edit-draft-memory" class="py-3 rounded-xl border border-wood/30 bg-white text-wood text-[12px] font-medium tracking-wider active:scale-[0.98] transition flex items-center justify-center gap-1.5">' + ICONS.edit + '<span>修改记忆</span></button>' +
+      '<button data-action="regenerate-story" class="py-3 rounded-xl border border-wood/30 bg-white text-wood text-[12px] font-medium tracking-wider active:scale-[0.98] transition flex items-center justify-center gap-1.5">' + ICONS.refresh + '<span>重新生成</span></button>' +
+      '<button data-action="save" class="py-3 rounded-xl bg-wood text-paper text-[12px] font-medium tracking-wider shadow-fab active:scale-[0.98] transition flex items-center justify-center gap-1.5">' + ICONS.save + '<span>保存</span></button>' +
     '</div>';
   }
 
@@ -732,15 +736,12 @@
           '<div class="mt-5 flex items-center gap-2.5"><div class="seal" style="width:32px;height:32px;font-size:14px">记</div><div><p class="text-[10px] text-ink-mute tracking-[0.3em]">STORY</p><h2 class="font-serif text-[20px] font-semibold text-ink leading-tight">' + escapeHtml(record.objectName) + '</h2></div></div>' +
           (record.purchaseInfo || record.meaning ? '<div class="mt-4 rounded-xl bg-paper-soft border border-line-soft px-4 py-3 text-[12px] text-ink-soft leading-relaxed space-y-1">' + (record.purchaseInfo ? '<p><span class="text-ink-mute">来历：</span>' + escapeHtml(record.purchaseInfo) + '</p>' : '') + (record.meaning ? '<p><span class="text-ink-mute">意义：</span>' + escapeHtml(record.meaning) + '</p>' : '') + '</div>' : '') +
           '<div class="mt-5 relative pl-4"><span class="absolute -left-0.5 top-0 bottom-0 w-px bg-wood-soft/40"></span><div class="desc-prose">' + paragraphs.map(p => '<p>' + escapeHtml(p) + '</p>').join('') + '</div></div>' +
-          '<div class="mt-6" data-detail-note>' +
-            (record.note ? '<div class="rounded-xl bg-wood-tint border border-wood/15 px-4 py-3"><p class="text-[10px] text-wood tracking-[0.3em] mb-1">MY NOTE</p><p class="font-serif text-[14px] text-ink leading-relaxed">' + escapeHtml(record.note) + '</p></div>' : '<button data-action="edit-note" class="w-full rounded-xl border border-dashed border-line py-3 text-[12px] text-ink-mute tracking-wider active:scale-[0.99] transition">+ 添加这条记忆的备注</button>') +
-          '</div>' +
           '<div class="mt-6 text-center"><p class="text-[10px] text-ink-faint tracking-widest">记录于 ' + formatFullDate(record.createdAt) + '</p></div>' +
         '</div>' +
       '</div>' +
       '<div class="absolute bottom-0 left-0 right-0 z-30 px-5 py-3 bg-paper-soft/95 backdrop-blur-md border-t border-line">' +
         '<div class="flex items-center justify-center gap-2">' +
-          '<button data-action="edit-note" class="flex-1 py-2.5 rounded-xl border border-wood/30 bg-white text-wood text-[13px] tracking-wider active:scale-[0.98] transition flex items-center justify-center gap-2">' + ICONS.edit + '<span>' + (record.note ? '编辑备注' : '添加备注') + '</span></button>' +
+          '<button data-action="edit-memory" class="flex-1 py-2.5 rounded-xl border border-wood/30 bg-white text-wood text-[13px] tracking-wider active:scale-[0.98] transition flex items-center justify-center gap-2">' + ICONS.edit + '<span>修改记忆</span></button>' +
           '<button data-action="delete" class="px-4 py-2.5 rounded-xl border border-line bg-white text-ink-mute text-[13px] tracking-wider active:scale-[0.98] transition flex items-center justify-center gap-2">' + ICONS.trash + '<span>删除</span></button>' +
         '</div>' +
       '</div>' +
@@ -791,22 +792,24 @@
     uiStore.set({ sheet: null });
   }
 
-  function showNoteEditor(initial = '', onSave) {
+  function showMemoryEditor(record, onSave) {
     const root = document.getElementById('sheet-root');
     root.innerHTML = '<div class="sheet-overlay fixed inset-0 z-[70] bg-ink/40 backdrop-blur-sm" data-action="close-sheet"></div>' +
-      '<div class="sheet-in fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] z-[80] bg-paper-soft rounded-t-3xl px-5 pt-3 pb-8 shadow-paper-lg">' +
+      '<div class="sheet-in fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] z-[80] bg-paper-soft rounded-t-3xl px-5 pt-3 pb-8 shadow-paper-lg" style="max-height:90vh;overflow-y:auto">' +
         '<div class="w-10 h-1 bg-line rounded-full mx-auto mb-4"></div>' +
-        '<p class="font-serif text-[16px] text-ink font-semibold">添加备注</p>' +
-        '<p class="text-[12px] text-ink-mute mt-1">写下你与这件物品之间的小事</p>' +
-        '<textarea id="note-input" rows="4" maxlength="200" class="mt-4 w-full p-3 rounded-xl bg-white border border-line text-[14px] text-ink leading-relaxed resize-none" placeholder="比如：这是妈妈年轻时的杯子">' + escapeHtml(initial) + '</textarea>' +
-        '<div class="mt-1 text-right text-[10px] text-ink-faint">最多 200 字</div>' +
-        '<div class="mt-3 space-y-2.5">' +
-          '<button data-action="note-save" class="w-full py-3 rounded-xl bg-wood text-paper text-[14px] font-medium tracking-wider active:scale-[0.98] transition">保存备注</button>' +
+        '<p class="font-serif text-[16px] text-ink font-semibold">修改记忆</p>' +
+        '<div class="mt-4 space-y-3">' +
+          '<div><label class="block text-[12px] text-ink-soft mb-1 tracking-wide">物品名称</label><textarea id="mem-name" rows="1" maxlength="60" class="w-full p-3 rounded-xl border border-line bg-white text-[14px] text-ink leading-relaxed resize-none">' + escapeHtml(record.objectName || '') + '</textarea></div>' +
+          '<div><label class="block text-[12px] text-ink-soft mb-1 tracking-wide">时间/地点</label><textarea id="mem-purchase" rows="2" maxlength="120" class="w-full p-3 rounded-xl border border-line bg-white text-[14px] text-ink leading-relaxed resize-none">' + escapeHtml(record.purchaseInfo || '') + '</textarea></div>' +
+          '<div><label class="block text-[12px] text-ink-soft mb-1 tracking-wide">意义</label><textarea id="mem-meaning" rows="2" maxlength="200" class="w-full p-3 rounded-xl border border-line bg-white text-[14px] text-ink leading-relaxed resize-none">' + escapeHtml(record.meaning || '') + '</textarea></div>' +
+          '<div><label class="block text-[12px] text-ink-soft mb-1 tracking-wide">故事正文</label><textarea id="mem-desc" rows="6" maxlength="500" class="w-full p-3 rounded-xl border border-line bg-white text-[14px] text-ink leading-relaxed resize-none font-serif">' + escapeHtml(record.description || '') + '</textarea></div>' +
+        '</div>' +
+        '<div class="mt-4 space-y-2.5">' +
+          '<button data-action="memory-save" data-prevent-blur class="w-full py-3 rounded-xl bg-wood text-paper text-[14px] font-medium tracking-wider active:scale-[0.98] transition">保存修改</button>' +
           '<button data-action="close-sheet" class="w-full py-3 rounded-xl bg-white border border-line text-ink-soft text-[14px] tracking-wider active:scale-[0.98] transition">取消</button>' +
         '</div>' +
       '</div>';
     uiStore.set({ sheet: { onSave } });
-    setTimeout(() => { const ta = document.getElementById('note-input'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, 200);
   }
 
   /* ========== 9. 动作处理 ========== */
@@ -911,7 +914,6 @@
         purchaseInfo: draft.userInput.purchaseInfo,
         meaning: draft.userInput.meaning,
         description: draft.description,
-        note: '',
         createdAt: Date.now(),
       };
       memoryStore.set({ records: [record, ...memoryStore.get().records], captureDraft: null });
@@ -934,15 +936,44 @@
         }
       });
     },
-    'edit-note': () => {
+    'edit-memory': () => {
       const { detailId } = uiStore.get();
       if (!detailId) return;
       const rec = memoryStore.get().records.find(r => r.id === detailId);
       if (!rec) return;
-      showNoteEditor(rec.note || '', (newNote) => {
-        memoryStore.set({ records: memoryStore.get().records.map(r => r.id === detailId ? { ...r, note: newNote } : r) });
-        showToast('备注已保存');
+      showMemoryEditor(rec, (updated) => {
+        memoryStore.set({ records: memoryStore.get().records.map(r => r.id === detailId ? { ...r, ...updated } : r) });
+        showToast('记忆已更新');
       });
+    },
+    'edit-draft-memory': () => {
+      const draft = memoryStore.get().captureDraft;
+      if (!draft || draft.step !== 'done') return;
+      showMemoryEditor({
+        objectName: draft.userInput.objectName,
+        purchaseInfo: draft.userInput.purchaseInfo,
+        meaning: draft.userInput.meaning,
+        description: draft.description,
+      }, (updated) => {
+        memoryStore.set({ captureDraft: { ...draft, userInput: { objectName: updated.objectName, purchaseInfo: updated.purchaseInfo, meaning: updated.meaning }, description: updated.description } });
+        showToast('记忆已修改');
+      });
+    },
+    'memory-save': () => {
+      const ta1 = document.getElementById('mem-name');
+      const ta2 = document.getElementById('mem-purchase');
+      const ta3 = document.getElementById('mem-meaning');
+      const ta4 = document.getElementById('mem-desc');
+      if (!ta1 || !ta2 || !ta3 || !ta4) return;
+      const updated = {
+        objectName: ta1.value.trim(),
+        purchaseInfo: ta2.value.trim(),
+        meaning: ta3.value.trim(),
+        description: ta4.value.trim(),
+      };
+      const { sheet } = uiStore.get();
+      if (sheet && sheet.onSave) { try { sheet.onSave(updated); } catch (e) { console.error(e); } }
+      closeSheet();
     },
     'close-sheet': () => closeSheet(),
     'sheet-confirm': () => {
@@ -950,19 +981,15 @@
       if (sheet && sheet.onConfirm) { try { sheet.onConfirm(); } catch (e) { console.error(e); } }
       closeSheet();
     },
-    'note-save': () => {
-      const ta = document.getElementById('note-input');
-      if (!ta) return;
-      const { sheet } = uiStore.get();
-      const v = ta.value.trim().slice(0, 200);
-      if (sheet && sheet.onSave) { try { sheet.onSave(v); } catch (e) { console.error(e); } }
-      closeSheet();
-    },
   };
 
   document.addEventListener('click', (e) => {
     const target = e.target.closest('[data-action]');
     if (!target) return;
+    if (target.hasAttribute('data-prevent-blur')) {
+      const ae = document.activeElement;
+      if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT')) ae.blur();
+    }
     const action = target.dataset.action;
     const handler = handlers[action];
     if (handler) { e.preventDefault(); handler(target); }
@@ -987,7 +1014,7 @@
   /* ========== 10. 主渲染 ========== */
   function render() {
     const { route } = uiStore.get();
-    const app = document.getElementById('app');
+    const page = document.getElementById('page-root');
     let html = '';
     switch (route) {
       case 'capture': html = renderCapturePage(); break;
@@ -995,7 +1022,7 @@
       case 'about':   html = renderAboutPage();   break;
       default:        html = renderHomePage();
     }
-    app.innerHTML = html;
+    page.innerHTML = html;
   }
 
   uiStore.subscribe(render);
@@ -1094,8 +1121,8 @@
       uiStore.set({ route: r.route, detailId: r.detailId });
       render();
     } catch (err) {
-      const app = document.getElementById('app');
-      app.innerHTML = '<div style="padding:40px;font-family:sans-serif;color:#c0392b;background:#fef9f9;min-height:100vh"><h2>启动出错</h2><pre style="font-size:13px;word-break:break-all;background:#fff0f0;padding:12px;border-radius:8px">' + (err.stack || err.message) + '</pre><button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:#8C6B4A;color:#fff;border:none;border-radius:8px;cursor:pointer">重新加载</button></div>';
+      const page = document.getElementById('page-root');
+      page.innerHTML = '<div style="padding:40px;font-family:sans-serif;color:#c0392b;background:#fef9f9;min-height:100vh"><h2>启动出错</h2><pre style="font-size:13px;word-break:break-all;background:#fff0f0;padding:12px;border-radius:8px">' + (err.stack || err.message) + '</pre><button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:#8C6B4A;color:#fff;border:none;border-radius:8px;cursor:pointer">重新加载</button></div>';
     }
   })();
   </script>
