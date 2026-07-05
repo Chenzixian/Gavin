@@ -429,8 +429,8 @@
   }
 
   /* ========== 4. API 配置 ========== */
-  const DEEPSEEK_API_KEY = 'sk-f1236fb6009040049199017a37ee4cd3';
-  const OPENAI_API_KEY = '7b959787eca24c5eb8e367ffdc5c4dbb.Co9HeMXLjBBHJ84Q';
+  const SILICONFLOW_API_KEY = 'sk-ybqnlpbtrmdlbdyxqkdvsetolhlksrinmplyvnekxqjvuybv';
+  const ZHIPU_API_KEY = '7b959787eca24c5eb8e367ffdc5c4dbb.Co9HeMXLjBBHJ84Q';
 
   // 步骤1：智谱 AI 视觉识别（glm-4v）
   async function deepseekVision({ photoBase64 }) {
@@ -438,7 +438,7 @@
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + OPENAI_API_KEY
+        'Authorization': 'Bearer ' + ZHIPU_API_KEY
       },
       body: JSON.stringify({
         model: 'glm-4v',
@@ -463,15 +463,15 @@
     return data.choices?.[0]?.message?.content?.trim() || '';
   }
 
-  // 步骤2：DeepSeek 生成故事
+  // 步骤2：硅基流动 Qwen2.5-72B 生成故事
   async function generateStoryFromUserInput({ visionResult, objectName, purchaseInfo, meaning }) {
     const prompt = '你是一位温柔的"记忆守护者"。请根据以下信息，用第一人称（以"我"开头）写一段 150-200 字左右的温馨短故事。\n\n【AI 视觉识别结果】\n' + visionResult + '\n\n【用户自述】\n物品名称：' + objectName + '\n购买信息：' + purchaseInfo + '\n对我的意义：' + meaning + '\n\n写作要求：\n1. 以"我"开头，自然地讲述与这件物品的故事\n2. 语言温柔、生活化，像一位老朋友在讲述往事\n3. 可以结合视觉识别中看到的物品特征（颜色、材质、外观）和用户自述的信息\n4. 可以加入触感、气味、声音、温度等感官细节\n5. 不要出现"用户说"、"照片"、"AI"、"识别"、"根据你提供的信息"等词汇\n6. 故事要有情感温度，能打动人心\n7. 直接输出故事正文，不需要标题或引言';
 
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
+    const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + DEEPSEEK_API_KEY },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SILICONFLOW_API_KEY },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'Qwen/Qwen2.5-72B-Instruct',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 600,
         temperature: 0.85,
