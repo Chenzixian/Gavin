@@ -471,7 +471,7 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SILICONFLOW_API_KEY },
       body: JSON.stringify({
-        model: 'Qwen/Qwen2.5-72B-Instruct',
+        model: 'Qwen/Qwen2.5-7B-Instruct',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 600,
         temperature: 0.85,
